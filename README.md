@@ -1,4 +1,4 @@
-# 🧠 Linguistic Deception Detection System
+# 🧠 Clarify-Ai
 
 A final project in Deep Learning specialization.
 
