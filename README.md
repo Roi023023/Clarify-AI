@@ -33,11 +33,11 @@ The model targets patterns such as:
 * **Methods:** NLP, Text Representation Models, Reinforcement Learning
 * **Version Control:** Git / GitHub
 
-## 👥 Project Team (Deep Learning Specialization)
+## 👥 Project Team
 
-* **Amit Zarahia** 
+* **Amit Zerahia** 
 * **Roi Nahum**
 * **Noa David** 
-* **Linoy Avrahamy**
+* **Linoy Avrahami**
 
 **Project Approver:** Moshe Botman
