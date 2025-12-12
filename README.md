@@ -1,4 +1,4 @@
-# 🧠 Clarify-Ai
+# 🧠 Clarify-AI
 
 A final project in Deep Learning specialization.
 
