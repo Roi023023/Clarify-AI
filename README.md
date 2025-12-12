@@ -40,4 +40,4 @@ The model targets patterns such as:
 * **Noa David** 
 * **Linoy Avrahami**
 
-**Project Approver:** Moshe Botman
+**Project Approver:** Moshe Butman
