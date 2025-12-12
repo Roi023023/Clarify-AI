@@ -4,7 +4,7 @@ A final project in Deep Learning specialization.
 
 ## 🎯 Project Goal
 
-To develop a system capable of exposing **deception in articles** by analyzing **linguistic and logical patterns**.
+To develop a system capable of exposing **deception in text(Articles)** by analyzing **linguistic and logical patterns**.
 
 Existing solutions focus on fact-checking. Our system addresses the critical gap by identifying **style-based manipulation** (rhetoric, argumentative structure) that creates a misleading impression, independent of factual verification.
 
