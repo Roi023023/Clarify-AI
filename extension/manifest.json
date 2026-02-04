@@ -1,11 +1,23 @@
 {
   "manifest_version": 3,
   "name": "ClarifyAi",
-  "version": "1.0",
-  "description": "Explaining and clarifying content using AI",
+  "version": "1.2",
+  "description": "Detects manipulation in news articles",
   "action": {
     "default_popup": "popup.html",
     "default_icon": "icon.png"
   },
-  "permissions": []
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
 }
