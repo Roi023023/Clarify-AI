@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "ClarifyAi",
+  "version": "1.0",
+  "description": "Explaining and clarifying content using AI",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "permissions": []
+}
