@@ -6,10 +6,15 @@ const newsSites = [
 
 function isNewsSite(url) {
     if (!url) return false;
-    return newsSites.some(site => url.includes(site));
+    try {
+        const hostname = new URL(url).hostname;
+        return newsSites.some(site => hostname.includes(site));
+    } catch (e) {
+        return false;
+    }
 }
 
-// 1. האזנה לשינויים בטאבים (כדי להציג ON על האייקון)
+// עדכון האייקון בעת טעינת דף
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         checkAndActivate(tabId, tab.url);
@@ -27,17 +32,15 @@ function checkAndActivate(tabId, url) {
     });
 }
 
-// --- התיקון לשגיאה שלך ---
-// 2. האזנה להודעות מה-Popup (או מקומות אחרים)
+// קבלת הודעה מה-Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "updateState") {
         console.log("Status updated via Popup:", request.isEnabled);
-        // כאן אנחנו מחזירים תשובה כדי לסגור את המעגל ולמנוע את השגיאה
         sendResponse({status: "received"});
         
-        // אופציונלי: לרענן את הטאב הנוכחי כדי שהשינוי יחול מיד
+        // ריענון הטאב הנוכחי כדי להחיל שינויים
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (tabs[0] && isNewsSite(tabs[0].url)) {
+            if (tabs[0] && tabs[0].id && isNewsSite(tabs[0].url)) {
                 chrome.tabs.reload(tabs[0].id);
             }
         });
