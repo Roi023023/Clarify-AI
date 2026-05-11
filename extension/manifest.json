@@ -11,14 +11,40 @@
     "storage",
     "tabs"
   ],
-  "host_permissions": [],
+  "host_permissions": [
+    "https://gpt-oss-120b-mxfp4-runai-model-120b.cs.colman.ac.il/*",
+    "https://*.ynet.co.il/*",
+    "https://*.mako.co.il/*",
+    "https://*.walla.co.il/*",
+    "https://*.haaretz.co.il/*",
+    "https://*.israelhayom.co.il/*",
+    "https://*.maariv.co.il/*",
+    "https://*.themarker.com/*",
+    "https://*.calcalist.co.il/*",
+    "https://*.kan.org.il/*",
+    "https://*.jpost.com/*",
+    "https://*.globes.co.il/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": [
+        "https://*.ynet.co.il/*",
+        "https://*.mako.co.il/*",
+        "https://*.walla.co.il/*",
+        "https://*.haaretz.co.il/*",
+        "https://*.israelhayom.co.il/*",
+        "https://*.maariv.co.il/*",
+        "https://*.themarker.com/*",
+        "https://*.calcalist.co.il/*",
+        "https://*.kan.org.il/*",
+        "https://*.jpost.com/*",
+        "https://*.globes.co.il/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ]
 }
