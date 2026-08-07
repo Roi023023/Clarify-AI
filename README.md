@@ -1,43 +1,68 @@
-# 🧠 Clarify-AI
+# 🧠 ClarifyAI - Manipulation Detection in News Articles
 
-A final project in Deep Learning specialization.
+**ClarifyAI** היא הרחבת דפדפן (Chrome Extension) מבוססת בינה מלאכותית, שפותחה כפרויקט גמר במסלול למידה עמוקה (Deep Thinking / Deep Learning).
+המערכת מנתחת מאמרי חדשות בזמן אמת, מזהה מניפולציות לשוניות ודפוסי השפעה על הקורא, ומדגישה אותם ישירות על גבי כתבת החדשות.
 
-## 🎯 Project Goal
+---
 
-To develop a system capable of exposing **deception in text(Articles)** by analyzing **linguistic and logical patterns**.
+## 🎯 מטרת הפרויקט (Project Goal)
 
-Existing solutions focus on fact-checking. Our system addresses the critical gap by identifying **style-based manipulation** (rhetoric, argumentative structure) that creates a misleading impression, independent of factual verification.
+בניגוד לפתרונות Fact-Checking קלאסיים העוסקים באימות עובדות בלבד, **ClarifyAI** מתמקדת ב**מניפולציות סגנוניות ורטוריות**.
+המערכת מזהה ניסיונות הטיה, שימוש בשפה טעונה, קפיצות לוגיות ואמירות עמומות שנועדו להשפיע תודעתית על הקורא – ללא תלות באימות העובדות עצמן.
 
-## 📝 Project Description
+---
 
-The system is based on a **Deep Learning model** designed to classify various types of linguistic manipulations within a text using **Natural Language Processing (NLP)**.
+## 🏗️ ארכיטקטורת המערכת (System Architecture)
 
-We leverage existing English datasets, which will be translated into Hebrew, and utilize Large Language Models (LLMs) for tagging and classification of Hebrew texts.
+המערכת בנויה משלושה רכיבים מרכזיים:
 
-### Key Deception Categories Identified:
+- **Content Script (`content.js`)**:
+  - מזהה באופן אוטומטי כניסה לאתרי חדשות מובילים (Ynet, Mako, Walla, Haaretz, Israel Hayom ועוד).
+  - מחלץ את פסקאות הכתבה באמצעות סלקטורים מותאמים לכל אתר.
+  - מדגיש פסקאות מניפולטיביות על גבי העמוד ומציג סיידבר ניתוח מפורט.
 
-The model targets patterns such as:
+- **Background Service Worker (`background.js`)**:
+  - מקשר בין הרחבת הדפדפן לשרת ה-Inference של המכללה דרך SSL-VPN.
+  - תומך ב-Multi-fallback למודלי גיבוי בעת הצורך.
 
-* Logical Jumps.
-* Emotional/Dramatic Language.
-* Vague Source.
-* Attribution of Intent.
-* Overgeneralization.
-* Intentional Ambiguity.
-* Biased Framing.
+- **Inference Backend & AI Model**:
+  - המודל העיקרי: **`gemma-4-2b-it`** שעבר אימון ייעודי (Fine-Tuning) לזיהוי וסיווג מניפולציות בטקסט בעברית.
+  - מופעל על תשתית Run:AI בשרתי המכללה (עם דרייבר vLLM / bitsandbytes).
 
-## 🛠️ Technology Stack
+---
 
-* **Core Language:** Python
-* **Deep Learning Libraries:** PyTorch / TensorFlow
-* **Methods:** NLP, Text Representation Models, Reinforcement Learning
-* **Version Control:** Git / GitHub
+## 🏷️ קטגוריות המניפולציה המזוהות (Manipulation Categories)
 
-## 👥 Project Team
+המודל מאומן לזהות ולהסביר את הקטגוריות הבאות:
 
-* **Amit Zerahia** 
-* **Roi Nahum**
-* **Noa David** 
-* **Linoy Avrahami**
+| קטגוריה | תיאור | דוגמה |
+|---|---|---|
+| **קפיצה לוגית** (*Logical Leap*) | הסקת מסקנה שאינה נובעת מנתוני הבסיס המוצגים | *"מכיוון שהקצין ביקר בבופור, מדובר בנקודת מפנה בהיסטוריה"* |
+| **שפה טעונה רגשית** (*Emotional Language*) | שימוש במילים דרמטיות/מעוררות רגש במטרה להטות | *"אסון נוראי", "אדמה נפיצה", "החלטה גאונית"* |
+| **מקור עמום** (*Vague Source*) | ייחוס טענות לגורמים שאינם מוגדרים או ניתנים לאימות | *"גורמים בכירים מסרו", "הפרשנים טוענים"* |
+| **הכללת יתר** (*Overgeneralization*) | השלכה ממקרה פרטי על הכלל או קביעת קביעות גורפות | *"עם דור כזה אף אחד לא יוכל עלינו"* |
 
-**Project Approver:** Moshe Butman
+---
+
+## 🚀 התקנה והרצה (Installation & Setup)
+
+### 1. התקנת הרחבת הדפדפן
+1. פתח בדפדפן Chrome את העמוד: `chrome://extensions/`
+2. הפעל את מצב מפתח (**Developer mode**) בפינה העליונה.
+3. לחץ על **Load unpacked** ובחר בתיקיית `Clarify-AI/extension`.
+
+### 2. חיבור לרשת המכללה (Inference Access)
+כדי שהמודל הראשי יגיב, יש להתחבר ל-**SSL VPN** של המכללה. המערכת תפנה אוטומטית ל-API:
+`https://gemma-4-2b-it-518-runai-model-120b.cs.colman.ac.il/v1/chat/completions`
+
+---
+
+## 👥 צוות הפרויקט (Project Team)
+
+* **עמית זרחיה** (Amit Zerahia)
+* **רועי נחום** (Roi Nahum)
+* **נועה דוד** (Noa David)
+* **לינוי אברהמי** (Linoy Avrahami)
+
+**מנחה הפרויקט:** משה בוטמן (Moshe Butman)
+
