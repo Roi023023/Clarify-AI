@@ -1,13 +1,30 @@
+console.log("ClarifyAI background: service worker started");
+
 const newsSites = [
     "ynet.co.il", "mako.co.il", "walla.co.il", "haaretz.co.il",
     "israelhayom.co.il", "maariv.co.il", "themarker.com", "calcalist.co.il",
     "kan.org.il", "jpost.com", "globes.co.il"
 ];
 
+// Trained model — gemma-4-2b-it on university server (requires VPN)
 const MODEL_API_URL =
-    "https://gpt-oss-120b-mxfp4-runai-model-120b.cs.colman.ac.il/v1/chat/completions";
+    "https://gemma-4-2b-it-518-runai-model-120b.cs.colman.ac.il/v1/chat/completions";
 
-const MODEL_NAME = "gpt-oss-120b";
+// Direct IP fallback (same server, in case DNS doesn't resolve over VPN)
+const MODEL_API_URL_IP =
+    "https://10.10.248.21/v1/chat/completions";
+
+const MODEL_NAME = "gemma-4-2b-it";
+
+// OpenRouter fallback configuration
+const OPENROUTER_API_KEY = "";
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODELS = [
+    "deepseek/deepseek-r1",
+    "deepseek/deepseek-r1:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "meta-llama/llama-3.3-70b-instruct:free"
+];
 
 function isNewsSite(url) {
     if (!url) return false;
@@ -79,14 +96,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
 });
 
-async function analyzeWithModel(content) {
-    const response = await fetch(MODEL_API_URL, {
+async function callModelAPI(apiUrl, modelName, content, headers = {}) {
+    const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
+            ...headers,
         },
         body: JSON.stringify({
-            model: MODEL_NAME,
+            model: modelName,
             messages: [
                 {
                     role: "user",
@@ -94,13 +112,13 @@ async function analyzeWithModel(content) {
                 },
             ],
             temperature: 0,
-            max_tokens: 1924,
+            max_tokens: 8192,
         }),
     });
 
     if (!response.ok) {
         const errorText = await response.text().catch(() => "");
-        throw new Error(`Model API returned ${response.status}: ${errorText}`);
+        throw new Error(`API returned ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -116,7 +134,52 @@ async function analyzeWithModel(content) {
         throw new Error("Missing generated text in model response");
     }
 
-    console.log('ClarifyAI Response: ' + generatedText)
-
     return generatedText;
+}
+
+async function analyzeWithModel(content) {
+    // Try the trained model on university server (hostname)
+    try {
+        console.log("ClarifyAI: trying university server (hostname)...");
+        const result = await callModelAPI(MODEL_API_URL, MODEL_NAME, content);
+        console.log("ClarifyAI: university server responded ✅");
+        console.log("ClarifyAI Response: " + result);
+        return result;
+    } catch (primaryError) {
+        console.warn("ClarifyAI: university server (hostname) failed:", primaryError.message);
+    }
+
+    // Try the trained model via direct IP (in case DNS doesn't resolve)
+    try {
+        console.log("ClarifyAI: trying university server (direct IP)...");
+        const result = await callModelAPI(MODEL_API_URL_IP, MODEL_NAME, content);
+        console.log("ClarifyAI: university server (IP) responded ✅");
+        console.log("ClarifyAI Response: " + result);
+        return result;
+    } catch (ipError) {
+        console.warn("ClarifyAI: university server (IP) failed:", ipError.message);
+    }
+
+    // Fallback to OpenRouter API
+    let lastError = null;
+
+    for (const model of OPENROUTER_MODELS) {
+        try {
+            console.log("ClarifyAI: trying OpenRouter model:", model);
+            const result = await callModelAPI(OPENROUTER_API_URL, model, content, {
+                "Authorization": "Bearer " + OPENROUTER_API_KEY,
+                "HTTP-Referer": "https://clarify-ai.extension",
+                "X-Title": "ClarifyAI"
+            });
+
+            console.log("ClarifyAI: OpenRouter model", model, "responded ✅");
+            console.log("ClarifyAI Response: " + result);
+            return result;
+        } catch (err) {
+            console.warn("ClarifyAI: OpenRouter model", model, "failed:", err.message);
+            lastError = err;
+        }
+    }
+
+    throw new Error("All servers failed. Last error: " + (lastError ? lastError.message : "unknown"));
 }

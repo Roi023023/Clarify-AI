@@ -1,3 +1,5 @@
+console.log("ClarifyAI content script: INJECTED on", window.location.hostname);
+
 const newsSites = [
     "ynet.co.il", "mako.co.il", "walla.co.il", "haaretz.co.il",
     "israelhayom.co.il", "maariv.co.il", "themarker.com", "calcalist.co.il",
@@ -334,14 +336,51 @@ function hideLoadingPill() {
 // =============================================================================
 
 function extractArticleContent() {
-    let paragraphs = Array.from(document.querySelectorAll("article p"));
-    if (paragraphs.length === 0) paragraphs = Array.from(document.querySelectorAll("main p"));
-    if (paragraphs.length === 0) paragraphs = Array.from(document.querySelectorAll("p"));
+    // Site-specific selectors for Israeli news sites (ordered by specificity)
+    const siteSelectors = [
+        // Ynet — uses div.text_editor_paragraph inside .ArticleBodyComponent
+        ".ArticleBodyComponent .text_editor_paragraph",
+        // Ynet alternative
+        ".art_body .text_editor_paragraph",
+        // Mako
+        ".article-body p",
+        // Walla
+        ".item-main-content p",
+        // Haaretz / TheMarker
+        "[data-testid='paragraphBody']",
+        ".article-body__text p",
+        // Israel Hayom
+        ".article-body p",
+        ".post-content p",
+        // Generic semantic selectors
+        "article p",
+        "main p",
+        "[itemprop='articleBody'] p",
+        "[role='article'] p",
+        // Broad fallback
+        "p",
+    ];
 
-    paragraphs = paragraphs.filter(p => {
-        const text = p.innerText ? p.innerText.trim() : "";
-        return p.offsetParent !== null && text.length > 0;
-    });
+    let paragraphs = [];
+
+    for (const selector of siteSelectors) {
+        try {
+            paragraphs = Array.from(document.querySelectorAll(selector));
+        } catch (_) {
+            continue;
+        }
+
+        // Filter to visible, non-empty elements
+        paragraphs = paragraphs.filter(el => {
+            const text = el.innerText ? el.innerText.trim() : "";
+            return el.offsetParent !== null && text.length > 0;
+        });
+
+        if (paragraphs.length > 0) {
+            console.log("ClarifyAI: matched selector \"" + selector + "\" →", paragraphs.length, "paragraphs");
+            break;
+        }
+    }
 
     const paragraphMap = [];
     const parts = [];
@@ -371,12 +410,16 @@ function extractArticleContent() {
     };
 }
 
+
 // =============================================================================
 // Model response parsing
 // =============================================================================
 
 function stripCodeFences(text) {
     return String(text || "")
+        // Strip various thinking/reasoning tags
+        .replace(/<think>[\s\S]*?<\/think>/gi, "")
+        .replace(/<start_of_thought>[\s\S]*?<end_of_thought>/gi, "")
         .trim()
         .replace(/^```json\s*/i, "")
         .replace(/^```\s*/i, "")
@@ -387,18 +430,41 @@ function stripCodeFences(text) {
 function parseModelJson(text) {
     const cleaned = stripCodeFences(text);
 
+    // Try parsing the whole cleaned text as JSON
     try {
         return JSON.parse(cleaned);
     } catch (_) {}
 
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-
-    try {
-        return JSON.parse(match[0]);
-    } catch (_) {
-        return null;
+    // Find all JSON-like objects in the text and try each (last one is most likely the answer)
+    const jsonMatches = [];
+    const re = /\{[\s\S]*?\n\s*\}/g;
+    let m;
+    while ((m = re.exec(cleaned)) !== null) {
+        jsonMatches.push(m[0]);
     }
+
+    // Also try the greedy match (entire { ... } span)
+    const greedyMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (greedyMatch) {
+        jsonMatches.push(greedyMatch[0]);
+    }
+
+    // Try each match, prefer ones that contain "items"
+    for (const candidate of jsonMatches.reverse()) {
+        try {
+            const parsed = JSON.parse(candidate);
+            if (parsed && parsed.items) return parsed;
+        } catch (_) {}
+    }
+
+    // Last resort: try any match
+    for (const candidate of jsonMatches) {
+        try {
+            return JSON.parse(candidate);
+        } catch (_) {}
+    }
+
+    return null;
 }
 
 function normalizeForSearch(text) {
@@ -493,12 +559,15 @@ async function sendToModel(url, content) {
                 },
                 response => {
                     if (chrome.runtime.lastError) {
+                        console.error("ClarifyAI: chrome.runtime.lastError", chrome.runtime.lastError.message);
                         reject(new Error(chrome.runtime.lastError.message));
                         return;
                     }
 
                     if (!response || !response.ok) {
-                        reject(new Error(response && response.error ? response.error : "Unknown model error"));
+                        const errMsg = response && response.error ? response.error : "Unknown model error";
+                        console.error("ClarifyAI: model returned error", errMsg);
+                        reject(new Error(errMsg));
                         return;
                     }
 
@@ -513,12 +582,14 @@ async function sendToModel(url, content) {
 
         if (!parsed || !Array.isArray(parsed.items)) {
             console.warn("ClarifyAI: could not parse model JSON", generatedText);
+            showLoadingPill("⚠️ ClarifyAI: תגובת המודל לא תקינה");
             return [];
         }
 
         return convertModelItemsToLabels(parsed, content);
     } catch (err) {
-        console.warn("ClarifyAI: failed to reach model API via background worker", err);
+        console.error("ClarifyAI: failed to reach model API via background worker", err);
+        showLoadingPill("❌ ClarifyAI: השרת לא זמין — " + (err.message || err));
         return [];
     }
 }
@@ -661,9 +732,15 @@ function applyLabelHighlights(labels, paragraphMap) {
 // =============================================================================
 
 async function analyzeArticle() {
-    const { content, paragraphMap } = extractArticleContent();
+    console.log("ClarifyAI: analyzeArticle() started");
 
-    if (!content || content.length < 50) return;
+    const { content, paragraphMap } = extractArticleContent();
+    console.log("ClarifyAI: extracted content length =", content ? content.length : 0, "paragraphs =", paragraphMap.length);
+
+    if (!content || content.length < 50) {
+        console.warn("ClarifyAI: article too short, skipping");
+        return;
+    }
 
     injectSidebar();
 
@@ -671,7 +748,11 @@ async function analyzeArticle() {
 
     const labels = await sendToModel(window.location.href, content);
 
-    hideLoadingPill();
+    // Only hide the loading pill if sendToModel didn't replace it with an error
+    const pill = document.getElementById("clarify-loading-pill");
+    if (pill && !pill.textContent.startsWith("❌") && !pill.textContent.startsWith("⚠")) {
+        hideLoadingPill();
+    }
 
     applyLabelHighlights(labels, paragraphMap);
 
@@ -682,12 +763,19 @@ async function analyzeArticle() {
     }
 }
 
+console.log("ClarifyAI: checking isEnabled and isNewsSite...");
 chrome.storage.local.get(["isEnabled"], function(result) {
+    console.log("ClarifyAI: isEnabled =", result.isEnabled, "| isNewsSite =", isNewsSite(), "| hostname =", window.location.hostname);
+
     if (result.isEnabled && isNewsSite()) {
         if (document.readyState === "complete") {
+            console.log("ClarifyAI: page already loaded, starting analysis");
             analyzeArticle();
         } else {
+            console.log("ClarifyAI: waiting for page load...");
             window.addEventListener("load", () => setTimeout(analyzeArticle, 1500));
         }
+    } else {
+        console.log("ClarifyAI: skipping — extension is OFF or not a news site");
     }
 });

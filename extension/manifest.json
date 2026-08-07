@@ -13,6 +13,10 @@
   ],
   "host_permissions": [
     "https://gpt-oss-120b-mxfp4-runai-model-120b.cs.colman.ac.il/*",
+    "https://gemma-4-2b-it-518-runai-model-120b.cs.colman.ac.il/*",
+    "https://10.10.248.21/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*",
     "https://*.ynet.co.il/*",
     "https://*.mako.co.il/*",
     "https://*.walla.co.il/*",
