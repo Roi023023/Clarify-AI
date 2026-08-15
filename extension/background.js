@@ -112,7 +112,7 @@ async function callModelAPI(apiUrl, modelName, content, headers = {}) {
                 },
             ],
             temperature: 0,
-            max_tokens: 8192,
+            max_tokens: 2000,
         }),
     });
 
@@ -161,6 +161,7 @@ async function analyzeWithModel(content) {
     }
 
     // Fallback to OpenRouter API
+    console.warn("⚠️ ClarifyAI: השרת של המכללה לא זמין — עוברים למודל חלופי (OpenRouter)");
     let lastError = null;
 
     for (const model of OPENROUTER_MODELS) {

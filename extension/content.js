@@ -36,7 +36,10 @@ Rules:
 - return {"items": []} only when the article truly has no matching excerpts.
 - do not default to an empty list when matching excerpts are present.
 - do not include markdown.
-- do not include explanations outside the JSON.`;
+- do not include explanations outside the JSON.
+
+Do not include internal reasoning, thinking steps, or <think> tags. Answer directly and concisely.
+`;
 
 function isNewsSite() {
     return newsSites.some(site => window.location.hostname.includes(site));
@@ -480,6 +483,7 @@ function escapeRegExp(text) {
 function findExcerptSpan(content, excerpt) {
     if (!content || !excerpt) return null;
 
+    // Strategy 1: Exact match
     const exactStart = content.indexOf(excerpt);
     if (exactStart !== -1) {
         return {
@@ -488,6 +492,7 @@ function findExcerptSpan(content, excerpt) {
         };
     }
 
+    // Strategy 2: Whitespace-normalized regex
     const normalizedExcerpt = normalizeForSearch(excerpt);
     if (!normalizedExcerpt) return null;
 
@@ -504,6 +509,59 @@ function findExcerptSpan(content, excerpt) {
             };
         }
     } catch (_) {}
+
+    // Strategy 3: Strip punctuation and special chars for comparison
+    function stripPunct(t) {
+        return String(t || "")
+            .replace(/[\u200F\u200E\u00A0]/g, " ")   // RTL/LTR marks, non-breaking space
+            .replace(/["""''״׳`]/g, "")                // quotes
+            .replace(/[–—\-]/g, " ")                   // dashes
+            .replace(/[.,;:!?()\[\]{}<>]/g, "")        // punctuation
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    const strippedExcerpt = stripPunct(excerpt);
+    const strippedContent = stripPunct(content);
+
+    const strippedIdx = strippedContent.indexOf(strippedExcerpt);
+    if (strippedIdx !== -1) {
+        // Map the stripped position back to the original content
+        // by finding the closest match around that area
+        let charCount = 0;
+        let origStart = 0;
+        for (let i = 0; i < content.length && charCount < strippedIdx; i++) {
+            if (stripPunct(content[i]) !== "") charCount++;
+            origStart = i + 1;
+        }
+        // Find end by matching the length of the stripped excerpt
+        let matchLen = 0;
+        let origEnd = origStart;
+        for (let i = origStart; i < content.length && matchLen < strippedExcerpt.length; i++) {
+            if (stripPunct(content[i]) !== "") matchLen++;
+            origEnd = i + 1;
+        }
+        return { start: origStart, end: origEnd };
+    }
+
+    // Strategy 4: Substring match — try the first 40 chars of the excerpt
+    const shortExcerpt = normalizedExcerpt.substring(0, Math.min(40, normalizedExcerpt.length));
+    if (shortExcerpt.length >= 15) {
+        const shortPattern = escapeRegExp(shortExcerpt).replace(/\\ /g, "\\s+");
+        try {
+            const re2 = new RegExp(shortPattern);
+            const match2 = content.match(re2);
+            if (match2 && typeof match2.index === "number") {
+                // Find the end of the sentence/paragraph from the match point
+                const sentenceEnd = content.indexOf("\n", match2.index);
+                const end = sentenceEnd !== -1 ? sentenceEnd : match2.index + match2[0].length + 60;
+                return {
+                    start: match2.index,
+                    end: Math.min(end, content.length),
+                };
+            }
+        } catch (_) {}
+    }
 
     return null;
 }
