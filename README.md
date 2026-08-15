@@ -45,9 +45,10 @@ The system is built from three main components:
 
 ## Installation & Setup
 ### 1. Installing the browser extension
-1. Open the page: `chrome://extensions/` in the Chrome browser
-2. Enable Developer mode (**Developer mode**) in the top corner.
-3. Click **Load unpacked** and select the `Clarify-AI/extension` folder.
+2. Add the API key in openrouter on the extension (Ask Roi).
+3. Open the page: `chrome://extensions/` in the Chrome browser
+4. Enable Developer mode (**Developer mode**) in the top corner.
+5. Click **Load unpacked** and select the `Clarify-AI/extension` folder.
 
 ### 2. Connecting to the college network (Inference Access)
 In order for the main model to respond, you must connect to the college's **SSL VPN**. 
@@ -56,8 +57,8 @@ In order for the main model to respond, you must connect to the college's **SSL 
 
 ## 👥 Project Team
 
-* **עמית זרחיה** (Amit Zerahia)
 * **רואי נחום** (Roi Nahum)
+* **עמית זרחיה** (Amit Zerahia)
 * **נועה דוד** (Noa David)
 * **לינוי אברהמי** (Linoy Avrahami)
 
